@@ -13,6 +13,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Crave
+        env:
+          CRAVE_USERNAME: ${{ secrets.CRAVE_USERNAME }}
+          CRAVE_TOKEN: ${{ secrets.CRAVE_TOKEN }}
         run: |
           sudo apt update
           sudo apt install -y curl jq git
@@ -25,11 +28,10 @@ jobs:
 
           sudo ln -sf /home/${USER}/bin/crave /usr/bin/crave
 
-          printf '{\n  "username": "%s",\n  "token": "%s"\n}\n' \
-            "$CRAVE_USERNAME" "$CRAVE_TOKEN" > crave.conf
-        env:
-          CRAVE_USERNAME: ${{ secrets.CRAVE_USERNAME }}
-          CRAVE_TOKEN: ${{ secrets.CRAVE_TOKEN }}
+          jq -n \
+            --arg username "$CRAVE_USERNAME" \
+            --arg token "$CRAVE_TOKEN" \
+            '{username:$username,token:$token}' > crave.conf
 
       - name: Start Build
         run: |
