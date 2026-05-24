@@ -42,12 +42,16 @@ jobs:
           EOF
 
       - name: Start Build
+        env:
+          KEYS_PAT: ${{ secrets.KEYS_PAT }}
         run: |
           chmod +x scripts/build.sh
 
           SCRIPT=$(base64 -w0 scripts/build.sh)
 
           crave -c ${PWD}/crave.conf devspace -- "bash -c '
+            export KEYS_PAT=${KEYS_PAT}
+
             mkdir -p /tmp/los23
             cd /tmp/los23
 
