@@ -43,23 +43,26 @@ jobs:
 
       - name: Start Build
         run: |
-          crave -c ${PWD}/crave.conf clone create --projectID 72 lineage
+          chmod +x scripts/build.sh
 
-          cd lineage
+          crave -c ${PWD}/crave.conf devspace -- "bash -c '
+            mkdir -p /tmp/los23
+            cd /tmp/los23
 
-          cp ../scripts/build.sh .
+            cp ${GITHUB_WORKSPACE}/scripts/build.sh .
 
-          chmod +x build.sh
+            chmod +x build.sh
 
-          crave -c ${PWD}/../crave.conf run --no-patch -- "./build.sh"
+            ./build.sh
+          '"
 
       - name: Upload Error Log
         if: failure()
         run: |
-          cd lineage || true
+          crave -c ${PWD}/crave.conf devspace -- "bash -c '
+            cd /tmp/los23 || exit 0
 
-          crave -c ${PWD}/../crave.conf pull out/error.log || true
-
-          if [ -f out/error.log ]; then
-            cat out/error.log
-          fi
+            if [ -f out/error.log ]; then
+              cat out/error.log
+            fi
+          '"
