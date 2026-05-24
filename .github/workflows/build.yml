@@ -18,7 +18,7 @@ jobs:
           CRAVE_TOKEN: ${{ secrets.CRAVE_TOKEN }}
         run: |
           sudo apt update
-          sudo apt install -y curl jq git
+          sudo apt install -y curl jq git coreutils
 
           mkdir -p ${HOME}/bin
 
@@ -45,11 +45,13 @@ jobs:
         run: |
           chmod +x scripts/build.sh
 
+          SCRIPT=$(base64 -w0 scripts/build.sh)
+
           crave -c ${PWD}/crave.conf devspace -- "bash -c '
             mkdir -p /tmp/los23
             cd /tmp/los23
 
-            cp ${GITHUB_WORKSPACE}/scripts/build.sh .
+            echo \"$SCRIPT\" | base64 -d > build.sh
 
             chmod +x build.sh
 
