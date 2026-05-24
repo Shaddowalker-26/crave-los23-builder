@@ -28,10 +28,18 @@ jobs:
 
           sudo ln -sf /home/${USER}/bin/crave /usr/bin/crave
 
-          jq -n \
-            --arg username "$CRAVE_USERNAME" \
-            --arg token "$CRAVE_TOKEN" \
-            '{username:$username,token:$token}' > crave.conf
+          cat > crave.conf <<EOF
+          {
+            "username": "${CRAVE_USERNAME}",
+            "headers": {
+              "Content-Type": "application/json",
+              "Authorization": "${CRAVE_TOKEN}",
+              "User-Agent": "Crave"
+            },
+            "projects": [],
+            "server": "https://foss.crave.io/api"
+          }
+          EOF
 
       - name: Start Build
         run: |
