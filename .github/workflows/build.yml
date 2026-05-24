@@ -25,12 +25,8 @@ jobs:
 
           sudo ln -sf /home/${USER}/bin/crave /usr/bin/crave
 
-          cat > crave.conf <<EOF
-          {
-            "username": "${CRAVE_USERNAME}",
-            "token": "${CRAVE_TOKEN}"
-          }
-          EOF
+          printf '{\n  "username": "%s",\n  "token": "%s"\n}\n' \
+"$CRAVE_USERNAME" "$CRAVE_TOKEN" > crave.conf
         env:
           CRAVE_USERNAME: ${{ secrets.CRAVE_USERNAME }}
           CRAVE_TOKEN: ${{ secrets.CRAVE_TOKEN }}
