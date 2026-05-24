@@ -1,0 +1,51 @@
+name: LOS23 Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1440
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Crave
+        run: |
+          sudo apt update
+          sudo apt install -y curl jq git
+
+          mkdir -p ${HOME}/bin
+
+          curl -s https://raw.githubusercontent.com/accupara/crave/master/get_crave.sh | bash -s --
+
+          mv crave ${HOME}/bin/
+
+          sudo ln -sf /home/${USER}/bin/crave /usr/bin/crave
+
+          cat > crave.conf <<EOF
+          {
+            "username": "${CRAVE_USERNAME}",
+            "token": "${CRAVE_TOKEN}"
+          }
+          EOF
+        env:
+          CRAVE_USERNAME: ${{ secrets.CRAVE_USERNAME }}
+          CRAVE_TOKEN: ${{ secrets.CRAVE_TOKEN }}
+
+      - name: Start Build
+        run: |
+          chmod +x scripts/build.sh
+
+          crave -c ${PWD}/crave.conf run --no-patch -- "./scripts/build.sh"
+
+      - name: Upload Error Log
+        if: failure()
+        run: |
+          crave -c ${PWD}/crave.conf pull out/error.log || true
+
+          if [ -f out/error.log ]; then
+            cat out/error.log
+          fi
