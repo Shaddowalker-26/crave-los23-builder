@@ -1,27 +1,50 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
+# ── Validation ────────────────────────────────────────────────────────────────
+: "${KEYS_PAT:?Error: KEYS_PAT environment variable is not set}"
+
+# ── Config ────────────────────────────────────────────────────────────────────
+DEVICE="spes"
+BRANCH="lineage-23.2"
+MANIFEST_URL="https://github.com/LineageOS/android.git"
+LOCAL_MANIFESTS_URL="https://github.com/Shaddowalker-26/android_local_manifests.git"
+KEYS_REPO="https://${KEYS_PAT}@github.com/Shaddowalker-26/android_vendor_keys.git"
+KEYS_DIR="vendor/lineage-priv/keys"
+
+echo "================================================"
+echo " Building LineageOS ${BRANCH} for ${DEVICE}"
+echo "================================================"
+
+# ── Local Manifests ───────────────────────────────────────────────────────────
+echo "[1/4] Setting up local manifests..."
 rm -rf .repo/local_manifests
 
-repo init -u https://github.com/LineageOS/android.git -b lineage-23.2 --git-lfs
+git clone "${LOCAL_MANIFESTS_URL}" \
+    -b main \
+    .repo/local_manifests
 
-git clone https://github.com/Shaddowalker-26/android_local_manifests.git \
--b main \
-.repo/local_manifests
+# ── Signing Keys ──────────────────────────────────────────────────────────────
+echo "[2/4] Setting up signing keys..."
+if [ -d "${KEYS_DIR}" ]; then
+    echo "Keys directory already exists, pulling latest..."
+    git -C "${KEYS_DIR}" pull
+else
+    git clone "${KEYS_REPO}" "${KEYS_DIR}"
+fi
 
-repo sync -c --no-tags --no-clone-bundle -j$(nproc --all)
-
-export BUILD_USERNAME=Shaddowalker-26
-export BUILD_HOSTNAME=crave
-
-git clone https://${KEYS_PAT}@github.com/Shaddowalker-26/android_vendor_keys.git \
-vendor/lineage-priv/keys
-
-export ANDROID_SIGNING_KEYS=vendor/lineage-priv/keys
+# ── Build ─────────────────────────────────────────────────────────────────────
+echo "[3/4] Setting up build environment..."
+export BUILD_USERNAME="Shaddowalker-26"
+export BUILD_HOSTNAME="crave"
 
 source build/envsetup.sh
+lunch "lineage_${DEVICE}-trunk_staging-userdebug"
 
-lunch lineage_spes-trunk_staging-userdebug
-
+echo "[4/4] Starting build..."
 mka bacon
+
+echo "================================================"
+echo " Build completed successfully!"
+echo "================================================"
