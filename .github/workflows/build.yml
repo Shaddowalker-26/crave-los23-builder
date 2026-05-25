@@ -27,8 +27,13 @@ jobs:
           cat > ${HOME}/crave.conf <<EOF
           {
             "username": "${CRAVE_USERNAME}",
-            "token": "${CRAVE_TOKEN}",
-            "server": "https://foss.crave.io"
+            "headers": {
+              "Content-Type": "application/json",
+              "Authorization": "${CRAVE_TOKEN}",
+              "User-Agent": "Crave"
+            },
+            "projects": [],
+            "server": "https://foss.crave.io/api"
           }
           EOF
 
