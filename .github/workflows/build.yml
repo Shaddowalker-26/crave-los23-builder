@@ -38,7 +38,7 @@ jobs:
           EOF
 
           echo "Testing Crave connection..."
-          crave -c ${HOME}/crave.conf quota
+          crave -c ${HOME}/crave.conf list
 
       - name: Start Build
         env:
