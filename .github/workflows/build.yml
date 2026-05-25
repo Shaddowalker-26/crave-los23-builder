@@ -13,31 +13,22 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Crave
+        run: |
+          mkdir -p ${HOME}/bin
+          curl -s https://raw.githubusercontent.com/accupara/crave/master/get_crave.sh | bash -s --
+          mv crave ${HOME}/bin/
+          sudo ln -sf /home/${USER}/bin/crave /usr/bin/crave
+
+      - name: Setup Crave Config
         env:
           CRAVE_USERNAME: ${{ secrets.CRAVE_USERNAME }}
           CRAVE_TOKEN: ${{ secrets.CRAVE_TOKEN }}
         run: |
-          sudo apt update
-          sudo apt install -y curl jq git coreutils
-
-          mkdir -p ${HOME}/bin
-
-          curl -s https://raw.githubusercontent.com/accupara/crave/master/get_crave.sh | bash -s --
-
-          mv crave ${HOME}/bin/
-
-          sudo ln -sf /home/${USER}/bin/crave /usr/bin/crave
-
-          cat > crave.conf <<EOF
+          mkdir -p ~/.crave
+          cat > ~/.crave/conf.json <<EOF
           {
             "username": "${CRAVE_USERNAME}",
-            "headers": {
-              "Content-Type": "application/json",
-              "Authorization": "${CRAVE_TOKEN}",
-              "User-Agent": "Crave"
-            },
-            "projects": [],
-            "server": "https://foss.crave.io/api"
+            "token": "${CRAVE_TOKEN}"
           }
           EOF
 
@@ -45,30 +36,43 @@ jobs:
         env:
           KEYS_PAT: ${{ secrets.KEYS_PAT }}
         run: |
-          chmod +x scripts/build.sh
-
-          SCRIPT=$(base64 -w0 scripts/build.sh)
-
-          crave -c ${PWD}/crave.conf devspace -- "bash -c '
+          crave run --no-patch --project-id 72 -- "
             export KEYS_PAT=${KEYS_PAT}
 
-            mkdir -p /tmp/los23
-            cd /tmp/los23
+            # Re-initialize repo to lineage-23.2
+            repo init -u https://github.com/LineageOS/android.git \
+              -b lineage-23.2 \
+              --git-lfs
 
-            echo \"$SCRIPT\" | base64 -d > build.sh
+            # Setup local manifests
+            rm -rf .repo/local_manifests
+            git clone https://github.com/Shaddowalker-26/android_local_manifests.git \
+              -b main .repo/local_manifests
 
-            chmod +x build.sh
+            # Sync
+            repo sync -c --no-tags --no-clone-bundle -j\$(nproc --all)
 
-            ./build.sh
-          '"
+            # Setup signing keys
+            if [ -d vendor/lineage-priv/keys ]; then
+              git -C vendor/lineage-priv/keys pull
+            else
+              git clone https://${KEYS_PAT}@github.com/Shaddowalker-26/android_vendor_keys.git \
+                vendor/lineage-priv/keys
+            fi
+
+            # Build
+            export BUILD_USERNAME=Shaddowalker-26
+            export BUILD_HOSTNAME=crave
+
+            source build/envsetup.sh
+            lunch lineage_spes-trunk_staging-userdebug
+            mka bacon
+          "
 
       - name: Upload Error Log
         if: failure()
         run: |
-          crave -c ${PWD}/crave.conf devspace -- "bash -c '
-            cd /tmp/los23 || exit 0
-
-            if [ -f out/error.log ]; then
-              cat out/error.log
-            fi
-          '"
+          crave pull out/error.log || true
+          if [ -f out/error.log ]; then
+            cat out/error.log
+          fi
