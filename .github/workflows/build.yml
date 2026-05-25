@@ -27,34 +27,45 @@ jobs:
           cat > ${HOME}/crave.conf <<EOF
           {
             "username": "${CRAVE_USERNAME}",
-            "token": "${CRAVE_TOKEN}"
+            "token": "${CRAVE_TOKEN}",
+            "server": "https://foss.crave.io"
           }
           EOF
+
+          echo "Testing Crave connection..."
+          crave -c ${HOME}/crave.conf quota
 
       - name: Start Build
         env:
           KEYS_PAT: ${{ secrets.KEYS_PAT }}
         run: |
           crave -c ${HOME}/crave.conf run --no-patch --project-id 93 -- "
+            set -e
+
             export KEYS_PAT=${KEYS_PAT}
 
+            echo '--- Initializing repo ---'
             repo init -u https://github.com/LineageOS/android.git \
               -b lineage-23.2 \
               --git-lfs
 
+            echo '--- Setting up local manifests ---'
             rm -rf .repo/local_manifests
             git clone https://github.com/Shaddowalker-26/android_local_manifests.git \
               -b main .repo/local_manifests
 
+            echo '--- Syncing sources ---'
             repo sync -c --no-tags --no-clone-bundle -j\$(nproc --all)
 
+            echo '--- Setting up signing keys ---'
             if [ -d vendor/lineage-priv/keys ]; then
               git -C vendor/lineage-priv/keys pull
             else
-              git clone https://${KEYS_PAT}@github.com/Shaddowalker-26/android_vendor_keys.git \
+              git clone https://\${KEYS_PAT}@github.com/Shaddowalker-26/android_vendor_keys.git \
                 vendor/lineage-priv/keys
             fi
 
+            echo '--- Starting build ---'
             export BUILD_USERNAME=Shaddowalker-26
             export BUILD_HOSTNAME=crave
 
