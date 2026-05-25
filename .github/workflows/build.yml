@@ -24,8 +24,7 @@ jobs:
           CRAVE_USERNAME: ${{ secrets.CRAVE_USERNAME }}
           CRAVE_TOKEN: ${{ secrets.CRAVE_TOKEN }}
         run: |
-          mkdir -p ~/.crave
-          cat > ~/.crave/conf.json <<EOF
+          cat > ${HOME}/crave.conf <<EOF
           {
             "username": "${CRAVE_USERNAME}",
             "token": "${CRAVE_TOKEN}"
@@ -36,23 +35,19 @@ jobs:
         env:
           KEYS_PAT: ${{ secrets.KEYS_PAT }}
         run: |
-          crave run --no-patch --project-id 72 -- "
+          crave -c ${HOME}/crave.conf run --no-patch --project-id 93 -- "
             export KEYS_PAT=${KEYS_PAT}
 
-            # Re-initialize repo to lineage-23.2
             repo init -u https://github.com/LineageOS/android.git \
               -b lineage-23.2 \
               --git-lfs
 
-            # Setup local manifests
             rm -rf .repo/local_manifests
             git clone https://github.com/Shaddowalker-26/android_local_manifests.git \
               -b main .repo/local_manifests
 
-            # Sync
             repo sync -c --no-tags --no-clone-bundle -j\$(nproc --all)
 
-            # Setup signing keys
             if [ -d vendor/lineage-priv/keys ]; then
               git -C vendor/lineage-priv/keys pull
             else
@@ -60,7 +55,6 @@ jobs:
                 vendor/lineage-priv/keys
             fi
 
-            # Build
             export BUILD_USERNAME=Shaddowalker-26
             export BUILD_HOSTNAME=crave
 
@@ -72,7 +66,7 @@ jobs:
       - name: Upload Error Log
         if: failure()
         run: |
-          crave pull out/error.log || true
+          crave -c ${HOME}/crave.conf pull out/error.log || true
           if [ -f out/error.log ]; then
             cat out/error.log
           fi
